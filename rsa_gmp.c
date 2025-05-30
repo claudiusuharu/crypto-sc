@@ -5,8 +5,8 @@
 #include <stdint.h>
 #include <assert.h>
 
-#define RSA_BLOCK_OVERHEAD 11  // PKCS#1 v1.5: 00 02 [random] 00 [data]
-#define MAX_BLOCK_SIZE 512     // Supports up to 4096-bit keys
+#define RSA_BLOCK_OVERHEAD 11  
+#define MAX_BLOCK_SIZE 512     
 
 static void read_mpz_hex(mpz_t rop, FILE *f) {
     char buf[8192];
@@ -15,7 +15,6 @@ static void read_mpz_hex(mpz_t rop, FILE *f) {
     mpz_set_str(rop, buf, 16);
 }
 
-// Read key: n then e/d, both hex, one per line
 static int read_key(const char *path, mpz_t n, mpz_t ed) {
     FILE *f = fopen(path, "r");
     if (!f) return -1;
@@ -25,7 +24,6 @@ static int read_key(const char *path, mpz_t n, mpz_t ed) {
     return 0;
 }
 
-// Fill buf with random nonzero bytes
 static void random_nonzero_bytes(uint8_t *buf, size_t len) {
     FILE *urnd = fopen("/dev/urandom", "rb");
     for (size_t i = 0; i < len; ) {
@@ -44,13 +42,13 @@ int rsa_gmp_encrypt(FILE *fin, FILE *fout, const char *pubkey_path) {
         fprintf(stderr, "No public key file\n");
         return 1;
     }
-    size_t k = (mpz_sizeinbase(n, 2) + 7) / 8; // modulus size in bytes
+    size_t k = (mpz_sizeinbase(n, 2) + 7) / 8; 
     if (k > MAX_BLOCK_SIZE) { fprintf(stderr, "Key too large.\n"); return 1; }
     uint8_t bin[MAX_BLOCK_SIZE], enc[MAX_BLOCK_SIZE];
     size_t max_data = k - RSA_BLOCK_OVERHEAD;
     size_t r;
     while ((r = fread(bin, 1, max_data, fin)) > 0) {
-        // PKCS#1 v1.5 pad: 00 02 [random nonzero] 00 [data]
+       
         uint8_t padded[MAX_BLOCK_SIZE];
         padded[0] = 0x00; padded[1] = 0x02;
         random_nonzero_bytes(padded + 2, k - r - 3);
@@ -61,7 +59,6 @@ int rsa_gmp_encrypt(FILE *fin, FILE *fout, const char *pubkey_path) {
         mpz_powm(c, m, e, n);
         size_t w;
         mpz_export(enc, &w, 1, 1, 0, 0, c);
-        // Write k bytes, pad with leading zeros if needed
         if (w < k) memset(bin, 0, k - w);
         memcpy(bin + k - w, enc, w);
         fwrite(bin, 1, k, fout);
@@ -86,12 +83,10 @@ int rsa_gmp_decrypt(FILE *fin, FILE *fout, const char *privkey_path) {
         mpz_powm(m, c, d, n);
         size_t count;
         mpz_export(out, &count, 1, 1, 0, 0, m);
-        // Pad with leading zeros if needed
         if (count < k) memmove(out + (k - count), out, count), memset(out, 0, k - count);
-        // Remove PKCS#1 v1.5: find after 00 02 ... 00
         size_t i = 2;
         while (i < k && out[i] != 0) ++i;
-        if (i == k) continue; // error
+        if (i == k) continue; 
         ++i;
         fwrite(out + i, 1, k - i, fout);
     }
