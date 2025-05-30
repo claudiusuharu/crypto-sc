@@ -39,7 +39,6 @@ static void tea_decrypt_block(const uint8_t in[8], uint8_t out[8], const uint8_t
     out[4] = v1 >> 24; out[5] = v1 >> 16; out[6] = v1 >> 8; out[7] = v1;
 }
 
-// CBC mode with PKCS#7 padding
 void tea_cbc_encrypt(FILE *fin, FILE *fout, const uint8_t key[16], const uint8_t iv[8], int enc) {
     uint8_t prev[8], in[8], out[8];
     size_t r, i;
@@ -52,7 +51,6 @@ void tea_cbc_encrypt(FILE *fin, FILE *fout, const uint8_t key[16], const uint8_t
             fwrite(out, 1, 8, fout);
             memcpy(prev, out, 8);
         }
-        // Padding
         uint8_t pad = 8 - r;
         for (i = r; i < 8; i++) in[i] = pad;
         for (i = 0; i < 8; i++) in[i] ^= prev[i];
@@ -60,7 +58,6 @@ void tea_cbc_encrypt(FILE *fin, FILE *fout, const uint8_t key[16], const uint8_t
         fwrite(out, 1, 8, fout);
     } else {
         memcpy(prev, iv, 8);
-        // Get file size to detect last block
         fseek(fin, 0, SEEK_END);
         long total = ftell(fin);
         fseek(fin, 0, SEEK_SET);
@@ -71,7 +68,6 @@ void tea_cbc_encrypt(FILE *fin, FILE *fout, const uint8_t key[16], const uint8_t
             tea_decrypt_block(in, out, key);
             for (i = 0; i < 8; i++) out[i] ^= prev[i];
             if (blk == blocks - 1) {
-                // Remove padding
                 uint8_t pad = out[7];
                 if (pad == 0 || pad > 8) pad = 8;
                 fwrite(out, 1, 8 - pad, fout);
